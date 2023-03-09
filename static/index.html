@@ -7,7 +7,8 @@
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
         Copyright 2013 Abram Hindle
-        
+        Copyright 2023 Shihao Liu
+
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
         You may obtain a copy of the License at
@@ -22,7 +23,7 @@
     "/>
     <script src="json2.js"></script>
   </head> 
-  <body bgcolor="black" height="100%" width="100%"> 
+  <body bgcolor="white" height="100%" width="100%"> 
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
     <script>
 var canvas = document.getElementById('c');
@@ -39,7 +40,13 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
             try {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
+                    // someData: JSON response 
+                    var someData = JSON.parse(xhr.responseText);
                     //XXX: Pass the data to the callback!
+                    if (callback) {
+                        callback(someData);
+                    }
+                    
                 }
             } 
             catch(e) {
@@ -48,8 +55,18 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
         }
     };
     //XXX: POST to a URL
+    // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/open 
+    xhr.open(method || "POST" || "GET", url);
     //XXX: set the mimetype and the accept headers!
+    // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/overrideMimeType
     // Remember to use application/json !
+    xhr.setRequestHeader("Content-type", "application/json");
+    // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/setRequestHeader
+    // Remember to use application/json !
+    xhr.setRequestHeader("Accept", "application/json");
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+    var sendData = JSON.stringify(objects);
+    xhr.sendData(sendData);
 }
 
 
@@ -137,8 +154,10 @@ function getPosition(e) {
 function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
-    //XXX: Send a XHTML Request that updates the entity you just  modified!
-
+    //XXX: Send a XHTML Request that updates the entity you just modified!
+    var url = "/entity/" + entity;
+    sendJSONXMLHTTPRequest(url, data, "POST", true);
+    // sendJSONXMLHTTPRequest(url, data , result => {});
 }
 
 var counter = 0;
@@ -247,7 +266,7 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'green'});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
@@ -255,14 +274,25 @@ mouse.mouseuppers.push(function(x,y,clicked,e) {
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    addEntityWithoutName({'x':x,'y':y,'colour':'yellow',
+                          'radius': 10 * (1 + Math.random())});
 });
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
     drawFrame();
+    sendJSONXMLHTTPRequest("/world", null, function(response) {
+        var data = response;
+        if (data) {
+            for (let key in data) {
+                world[key] = data[key];
+            }
+            drawNextFrame();
+            // drawFrame();
+        }
+    });
+    drawNextFrame();
 }
 
 // 30 frames per second
